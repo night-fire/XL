@@ -18,6 +18,8 @@ pub enum Token {
     #[token("ast")] AstKw,
     #[token("import")] ImportKw,
     #[token("export")] ExportKw,
+    #[token("struct")] StructKw,
+    #[token("enum")] EnumKw,
 
     // Symbols
     #[token("{")] LBrace,

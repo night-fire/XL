@@ -6,6 +6,8 @@ pub struct Program {
     pub functions: Vec<Function>, // top-level
     pub modules: Vec<Module>,
     pub ast_decls: Vec<AstDecl>,
+    pub struct_decls: Vec<StructDecl>,
+    pub enum_decls: Vec<EnumDecl>,
     pub imports: Vec<String>,
 }
 
@@ -156,6 +158,24 @@ pub struct AstField {
 pub struct AstDecl {
     pub name: String,
     pub fields: Vec<AstField>,
+}
+
+#[derive(Debug, Clone)]
+pub struct StructDecl {
+    pub name: String,
+    pub fields: Vec<(String, Type)>,
+}
+
+#[derive(Debug, Clone)]
+pub struct EnumVariant {
+    pub name: String,
+    pub payload: Option<Type>,
+}
+
+#[derive(Debug, Clone)]
+pub struct EnumDecl {
+    pub name: String,
+    pub variants: Vec<EnumVariant>,
 }
 
 pub type SpannedToken = Spanned<Token>;

@@ -8,6 +8,8 @@ pub enum Ty {
     Bool,
     Var(u32),
     Fun(Box<Ty>, Box<Ty>),
+    Named(String),
+    App(Box<Ty>, Vec<Ty>),
 }
 
 #[derive(Default)]
@@ -47,5 +49,13 @@ fn infer(expr: &Expr, env: &mut HashMap<String, Ty>, st: &mut TIState) -> Result
 }
 
 fn unify(a: &Ty, b: &Ty) -> Result<(), XLError> {
-    if a == b { Ok(()) } else { Err(XLError::SemanticError(format!("cannot unify {:?} and {:?}", a, b))) }
+    if a == b { return Ok(()); }
+    match (a, b) {
+        (Ty::Var(_), _) | (_, Ty::Var(_)) => Ok(()), // TODO occur check
+        (Ty::App(fa, args_a), Ty::App(fb, args_b)) if fa == fb && args_a.len() == args_b.len() => {
+            for (x, y) in args_a.iter().zip(args_b) { unify(x, y)?; }
+            Ok(())
+        }
+        _ => Err(XLError::SemanticError(format!("cannot unify {:?} and {:?}", a, b)))
+    }
 }

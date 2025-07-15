@@ -1,5 +1,5 @@
 use crate::ast::*;
-use crate::ast::{RewriteRule, AstDecl, AstField};
+use crate::ast::{RewriteRule, AstDecl, AstField, StructDecl, EnumDecl, EnumVariant};
 use crate::error::XLError;
 use crate::lexer::Spanned;
 use crate::token::Token;
@@ -22,18 +22,24 @@ impl Parser {
         let mut modules = Vec::new();
         let mut ast_decls = Vec::new();
         let mut imports = Vec::new();
+        let mut struct_decls = Vec::new();
+        let mut enum_decls = Vec::new();
         while !self.is_eof() {
             if self.check(Token::ImportKw) {
                 imports.push(self.parse_import()?);
             } else if self.check(Token::AstKw) {
                 ast_decls.push(self.parse_ast_decl()?);
+            } else if self.check(Token::StructKw) {
+                struct_decls.push(self.parse_struct_decl()?);
+            } else if self.check(Token::EnumKw) {
+                enum_decls.push(self.parse_enum_decl()?);
             } else if self.check(Token::ModuleKw) {
                 modules.push(self.parse_module()?);
             } else {
                 functions.push(self.parse_function()?);
             }
         }
-        Ok(Program { functions, modules, ast_decls, imports })
+        Ok(Program { functions, modules, ast_decls, struct_decls, enum_decls, imports })
     }
 
     fn parse_function(&mut self) -> Result<Function, XLError> {
@@ -385,5 +391,42 @@ impl Parser {
         self.expect(Token::RParen)?;
         self.expect(Token::Semicolon)?;
         Ok(AstDecl { name, fields })
+    }
+
+    fn parse_struct_decl(&mut self) -> Result<StructDecl, XLError> {
+        self.expect_keyword(Token::StructKw)?;
+        let name = self.expect_ident()?;
+        self.expect(Token::LBrace)?;
+        let mut fields = Vec::new();
+        while !self.check(Token::RBrace) {
+            let field_name = self.expect_ident()?;
+            self.expect(Token::Colon)?;
+            let field_type_ident = self.expect_ident()?;
+            fields.push((field_name, Type::Generic(field_type_ident.clone(), vec![])));
+            if self.check(Token::RBrace) { break; }
+            self.expect(Token::Comma)?;
+        }
+        self.expect(Token::RBrace)?;
+        Ok(StructDecl { name, fields })
+    }
+
+    fn parse_enum_decl(&mut self) -> Result<EnumDecl, XLError> {
+        self.expect_keyword(Token::EnumKw)?;
+        let name = self.expect_ident()?;
+        self.expect(Token::LBrace)?;
+        let mut variants = Vec::new();
+        while !self.check(Token::RBrace) {
+            let var_name = self.expect_ident()?;
+            let payload = if self.match_token(Token::LParen) {
+                let ty_ident = self.expect_ident()?;
+                self.expect(Token::RParen)?;
+                Some(Type::Generic(ty_ident, vec![]))
+            } else { None };
+            variants.push(EnumVariant { name: var_name, payload });
+            if self.check(Token::RBrace) { break; }
+            self.expect(Token::Comma)?;
+        }
+        self.expect(Token::RBrace)?;
+        Ok(EnumDecl { name, variants })
     }
 }
