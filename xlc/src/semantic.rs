@@ -1,5 +1,6 @@
 use crate::ast::*;
 use crate::error::XLError;
+use crate::types::{self, Ty};
 use std::collections::HashMap;
 
 pub fn analyze(program: &Program) -> Result<(), XLError> {
@@ -51,21 +52,19 @@ impl Context {
 }
 
 fn analyze_function(func: &Function, ctx: &Context) -> Result<(), XLError> {
-    for stmt in &func.body.stmts {
-        match stmt {
-            Stmt::Return(expr) => {
-                let ty = infer_expr_type(expr, ctx)?;
-                if ty != func.return_type {
-                    return Err(XLError::SemanticError(format!(
-                        "return type mismatch in function {}: expected {:?}, found {:?}",
-                        func.name, func.return_type, ty
-                    )));
-                }
+    // Use Hindley-Milner inference on the whole block
+    match types::infer_block(&func.body) {
+        Ok(inferred) => {
+            if inferred != func.return_type {
+                return Err(XLError::SemanticError(format!(
+                    "return type mismatch in function {}: expected {:?}, found {:?}",
+                    func.name, func.return_type, inferred
+                )));
             }
-            _ => {}
+            Ok(())
         }
+        Err(e) => Err(e),
     }
-    Ok(())
 }
 
 fn infer_expr_type(expr: &Expr, ctx: &Context) -> Result<Type, XLError> {
