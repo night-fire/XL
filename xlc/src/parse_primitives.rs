@@ -91,6 +91,28 @@ pub mod comb {
         {
             Or { left: self, right: p2, _phantom: std::marker::PhantomData }
         }
+
+        fn optional(self) -> Optional<Self, T>
+        where
+            Self: Sized,
+        {
+            Optional { parser: self, _phantom: std::marker::PhantomData }
+        }
+
+        fn many(self) -> Many<Self, T>
+        where
+            Self: Sized,
+        {
+            Many { parser: self, _phantom: std::marker::PhantomData }
+        }
+
+        fn sep_by<S, U>(self, sep: S) -> SepBy<Self, S, T>
+        where
+            Self: Sized,
+            S: Parser<'a, U>,
+        {
+            SepBy { element: self, separator: sep, _phantom: std::marker::PhantomData }
+        }
     }
 
     impl<'a, F, T> Parser<'a, T> for F
@@ -150,6 +172,74 @@ pub mod comb {
     {
         fn parse(&self, input: &'a str) -> ParseResult<'a, T> {
             self.left.parse(input).or_else(|_| self.right.parse(input))
+        }
+    }
+
+    // Optional
+    pub struct Optional<P, T> {
+        parser: P,
+        _phantom: std::marker::PhantomData<T>,
+    }
+
+    impl<'a, P, T> Parser<'a, Option<T>> for Optional<P, T>
+    where
+        P: Parser<'a, T>,
+    {
+        fn parse(&self, input: &'a str) -> ParseResult<'a, Option<T>> {
+            match self.parser.parse(input) {
+                Ok((rest, v)) => Ok((rest, Some(v))),
+                Err(_) => Ok((input, None)),
+            }
+        }
+    }
+
+    // Many (zero or more)
+    pub struct Many<P, T> {
+        parser: P,
+        _phantom: std::marker::PhantomData<T>,
+    }
+
+    impl<'a, P, T> Parser<'a, Vec<T>> for Many<P, T>
+    where
+        P: Parser<'a, T>,
+    {
+        fn parse(&self, mut input: &'a str) -> ParseResult<'a, Vec<T>> {
+            let mut res = Vec::new();
+            while let Ok((rest, v)) = self.parser.parse(input) {
+                res.push(v);
+                input = rest;
+            }
+            Ok((input, res))
+        }
+    }
+
+    // SepBy (elements separated by specific parser)
+    pub struct SepBy<E, S, T> {
+        element: E,
+        separator: S,
+        _phantom: std::marker::PhantomData<T>,
+    }
+
+    impl<'a, E, S, T, U> Parser<'a, Vec<T>> for SepBy<E, S, T>
+    where
+        E: Parser<'a, T>,
+        S: Parser<'a, U>,
+    {
+        fn parse(&self, mut input: &'a str) -> ParseResult<'a, Vec<T>> {
+            let mut items = Vec::new();
+            if let Ok((rest, first)) = self.element.parse(input) {
+                items.push(first);
+                input = rest;
+                while let Ok((rest_sep, _)) = self.separator.parse(input) {
+                    if let Ok((rest_el, el)) = self.element.parse(rest_sep) {
+                        items.push(el);
+                        input = rest_el;
+                    } else {
+                        return Err(ParseError { input, message: "Expected element after separator" });
+                    }
+                }
+            }
+            Ok((input, items))
         }
     }
 

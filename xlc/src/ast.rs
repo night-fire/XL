@@ -47,7 +47,7 @@ pub enum Expr {
         arms: Vec<(Pattern, Expr)>,
     },
     Rewrite {
-        rules: Vec<(Pattern, Expr)>,
+        rules: Vec<RewriteRule>,
         target: Box<Expr>,
     },
     Binary {
@@ -86,6 +86,14 @@ impl Type {
             _ => None,
         }
     }
+
+    pub fn is_numeric(&self) -> bool {
+        matches!(self, Type::Int)
+    }
+
+    pub fn unify(a: &Type, b: &Type) -> Option<Type> {
+        if a == b { Some(a.clone()) } else { None }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -112,6 +120,13 @@ pub enum Pattern {
         callee: Option<String>,
         args: Vec<Pattern>,
     },
+}
+
+#[derive(Debug, Clone)]
+pub struct RewriteRule {
+    pub pattern: Pattern,
+    pub guard: Option<Expr>, // evaluated with captures
+    pub replacement: Expr,
 }
 
 pub type SpannedToken = Spanned<Token>;

@@ -106,35 +106,97 @@ pub fn match_pattern_simple(pattern: &Pattern, expr: &Expr) -> bool {
     match_pattern(pattern, expr, &mut b)
 }
 
-/// Apply first matching rewrite rule to expression tree (pre-order).
-pub fn apply_rewrite_rules(expr: Expr, rules: &[(Pattern, Expr)]) -> Expr {
-    // Try to apply rule to current node
-    for (pat, replacement) in rules {
+/// Apply rewrite rules with guards and capture substitution (new API)
+pub fn apply_rewrite_rules2(expr: Expr, rules: &[crate::ast::RewriteRule]) -> Expr {
+    use crate::ast::RewriteRule;
+    // Attempt to match each rule in order
+    for RewriteRule { pattern, guard, replacement } in rules {
         let mut binds = Bindings::new();
-        if match_pattern(pat, &expr, &mut binds) {
-            // Simple replacement ignoring capture substitution for now
-            // TODO: substitute captures inside replacement using binds
-            return replacement.clone();
+        if match_pattern(pattern, &expr, &mut binds) {
+            // Check guard if any
+            let guard_ok = match guard {
+                None => true,
+                Some(Expr::Bool(b)) => *b,
+                _ => false, // Only constant bool for now
+            };
+            if !guard_ok { continue; }
+
+            // Substitute captures in replacement
+            return substitute_captures(replacement.clone(), &binds);
         }
     }
-    // Recurse otherwise
+    // Recurse
     match expr {
         Expr::Binary { op, left, right } => Expr::Binary {
             op,
-            left: Box::new(apply_rewrite_rules(*left, rules)),
-            right: Box::new(apply_rewrite_rules(*right, rules)),
+            left: Box::new(apply_rewrite_rules2(*left, rules)),
+            right: Box::new(apply_rewrite_rules2(*right, rules)),
         },
         Expr::Call { callee, args } => Expr::Call {
             callee,
-            args: args.into_iter().map(|e| apply_rewrite_rules(e, rules)).collect(),
+            args: args.into_iter().map(|e| apply_rewrite_rules2(e, rules)).collect(),
         },
         Expr::Match { value, arms } => Expr::Match {
-            value: Box::new(apply_rewrite_rules(*value, rules)),
-            arms: arms
-                .into_iter()
-                .map(|(p, e)| (p, apply_rewrite_rules(e, rules)))
-                .collect(),
+            value: Box::new(apply_rewrite_rules2(*value, rules)),
+            arms: arms.into_iter().map(|(p, e)| (p, apply_rewrite_rules2(e, rules))).collect(),
         },
         other => other,
     }
+}
+
+fn substitute_captures(expr: Expr, binds: &Bindings) -> Expr {
+    match expr {
+        Expr::Ident(name) => {
+            if let Some(e) = binds.get(&name) {
+                (*e).clone()
+            } else {
+                Expr::Ident(name)
+            }
+        }
+        Expr::Binary { op, left, right } => Expr::Binary {
+            op,
+            left: Box::new(substitute_captures(*left, binds)),
+            right: Box::new(substitute_captures(*right, binds)),
+        },
+        Expr::Call { callee, args } => Expr::Call {
+            callee,
+            args: args.into_iter().map(|e| substitute_captures(e, binds)).collect(),
+        },
+        other => other,
+    }
+}
+
+pub fn apply_rewrite_rules(expr: Expr, rules: &[crate::ast::RewriteRule]) -> Expr {
+    apply_rewrite_rules2(expr, rules)
+}
+
+/// Fold expression tree aggregating value `A` using provided closure.
+pub fn fold_expr<A, F>(expr: &Expr, init: A, mut f: F) -> A
+where
+    F: FnMut(A, &Expr) -> A,
+    A: Clone,
+{
+    let mut acc = f(init, expr);
+    match expr {
+        Expr::Binary { left, right, .. } => {
+            acc = fold_expr(left, acc, &mut f);
+            acc = fold_expr(right, acc, &mut f);
+        }
+        Expr::Call { args, .. } => {
+            for a in args {
+                acc = fold_expr(a, acc, &mut f);
+            }
+        }
+        Expr::Match { value, arms } => {
+            acc = fold_expr(value, acc, &mut f);
+            for (_, e) in arms {
+                acc = fold_expr(e, acc, &mut f);
+            }
+        }
+        Expr::Rewrite { target, .. } => {
+            acc = fold_expr(target, acc, &mut f);
+        }
+        _ => {}
+    }
+    acc
 }

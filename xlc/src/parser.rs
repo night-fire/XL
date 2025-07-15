@@ -1,4 +1,5 @@
 use crate::ast::*;
+use crate::ast::RewriteRule;
 use crate::error::XLError;
 use crate::lexer::Spanned;
 use crate::token::Token;
@@ -178,10 +179,16 @@ impl Parser {
         let mut rules = Vec::new();
         while !self.check(Token::RBrace) {
             let pat = self.parse_pattern()?;
+            let guard = if self.match_keyword(Token::If) {
+                // parse guard expression
+                Some(self.parse_expr()?)
+            } else {
+                None
+            };
             self.expect(Token::FatArrow)?;
             let repl = self.parse_expr()?;
             self.expect(Token::Semicolon)?;
-            rules.push((pat, repl));
+            rules.push(RewriteRule { pattern: pat, guard, replacement: repl });
         }
         self.expect(Token::RBrace)?;
         // After `rewrite { rules }` expect target expression in parentheses
