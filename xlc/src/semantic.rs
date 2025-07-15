@@ -79,5 +79,18 @@ fn infer_expr_type(expr: &Expr, ctx: &Context) -> Result<Type, XLError> {
             .get(callee)
             .cloned()
             .ok_or_else(|| XLError::SemanticError(format!("unknown function {}", callee))),
+        Expr::Match { value: _, arms } => {
+            if arms.is_empty() {
+                return Err(XLError::SemanticError("empty match expression".into()));
+            }
+            let first_ty = infer_expr_type(&arms[0].1, ctx)?;
+            for (_, expr) in arms.iter().skip(1) {
+                let ty = infer_expr_type(expr, ctx)?;
+                if ty != first_ty {
+                    return Err(XLError::SemanticError("inconsistent arm types in match".into()));
+                }
+            }
+            Ok(first_ty)
+        }
     }
 }

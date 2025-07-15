@@ -46,6 +46,7 @@ fn codegen_expr<'ctx>(expr: &Expr, context: &'ctx Context, builder: &inkwell::bu
                 BinaryOp::Div => Ok(builder.build_int_signed_div(l, r, "divtmp")),
             }
         }
+        Expr::Match { .. } => Err(XLError::CodegenError("match expression codegen not implemented".into())),
         _ => Err(XLError::CodegenError("unsupported expression in codegen".into())),
     }
 }

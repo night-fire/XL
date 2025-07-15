@@ -11,6 +11,7 @@ pub enum Token {
     #[token("String")] StringType,
     #[token("true")] True,
     #[token("false")] False,
+    #[token("match")] Match,
 
     // Symbols
     #[token("{")] LBrace,
@@ -26,6 +27,11 @@ pub enum Token {
     #[token("-")] Minus,
     #[token("*")] Star,
     #[token("/")] Slash,
+
+    #[token("=>")] FatArrow,
+
+    // Pattern / wildcard
+    #[token("_")] Underscore,
 
     // Literals
     #[regex("[0-9]+", |lex| lex.slice().parse())]

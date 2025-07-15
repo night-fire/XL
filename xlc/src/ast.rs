@@ -42,6 +42,10 @@ pub enum Expr {
     Bool(bool),
     String(String),
     Ident(String),
+    Match {
+        value: Box<Expr>,
+        arms: Vec<(Pattern, Expr)>,
+    },
     Binary {
         op: BinaryOp,
         left: Box<Expr>,
@@ -78,6 +82,15 @@ impl Type {
             _ => None,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum Pattern {
+    Wildcard,
+    Int(i64),
+    Bool(bool),
+    String(String),
+    Ident(String),
 }
 
 pub type SpannedToken = Spanned<Token>;

@@ -117,6 +117,9 @@ impl Parser {
                 self.advance();
                 Ok(Expr::Bool(false))
             }
+            Some(Token::Match) => {
+                return self.parse_match_expr();
+            }
             Some(Token::Ident(ref name)) => {
                 let ident = name.clone();
                 self.advance();
@@ -143,6 +146,59 @@ impl Parser {
                 Ok(expr)
             }
             other => Err(self.error(format!("unexpected token {:?} in expression", other))),
+        }
+    }
+
+    fn parse_match_expr(&mut self) -> Result<Expr, XLError> {
+        self.expect_keyword(Token::Match)?;
+        let value = self.parse_expr()?;
+        self.expect(Token::LBrace)?;
+        let mut arms = Vec::new();
+        while !self.check(Token::RBrace) {
+            let pat = self.parse_pattern()?;
+            self.expect(Token::FatArrow)?;
+            let arm_expr = self.parse_expr()?;
+            // optional comma
+            self.match_token(Token::Comma);
+            arms.push((pat, arm_expr));
+        }
+        self.expect(Token::RBrace)?;
+        Ok(Expr::Match {
+            value: Box::new(value),
+            arms,
+        })
+    }
+
+    fn parse_pattern(&mut self) -> Result<Pattern, XLError> {
+        match self.peek_token() {
+            Some(Token::IntLiteral(v)) => {
+                let val = *v;
+                self.advance();
+                Ok(Pattern::Int(val))
+            }
+            Some(Token::StringLiteral(ref s)) => {
+                let txt = s.clone();
+                self.advance();
+                Ok(Pattern::String(txt))
+            }
+            Some(Token::True) => {
+                self.advance();
+                Ok(Pattern::Bool(true))
+            }
+            Some(Token::False) => {
+                self.advance();
+                Ok(Pattern::Bool(false))
+            }
+            Some(Token::Underscore) => {
+                self.advance();
+                Ok(Pattern::Wildcard)
+            }
+            Some(Token::Ident(ref name)) => {
+                let id = name.clone();
+                self.advance();
+                Ok(Pattern::Ident(id))
+            }
+            other => Err(self.error(format!("unexpected token {:?} in pattern", other))),
         }
     }
 

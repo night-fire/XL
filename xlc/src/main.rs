@@ -8,6 +8,8 @@ mod parser;
 mod semantic;
 mod codegen;
 mod error;
+mod ast_utils;
+mod parse_primitives;
 
 use anyhow::Result;
 
