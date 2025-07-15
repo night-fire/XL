@@ -1,5 +1,5 @@
 use super::{env::TypeEnv, subst::Subst, ty::{Ty, Tv}, scheme::{Scheme, ftv}, unify::unify};
-use crate::ast::{Expr, BinaryOp};
+use crate::ast::{Expr, BinaryOp, Block, Stmt};
 use crate::error::XLError;
 
 #[derive(Debug)]
@@ -10,6 +10,26 @@ pub fn infer_expr(expr: &Expr) -> Result<Ty, XLError> {
     let mut next = 0u32;
     let (ty, _subst) = infer(expr, &mut env, &mut next)?;
     Ok(ty)
+}
+
+pub fn infer_block(block:&Block) -> Result<Ty, XLError> {
+    let mut env = TypeEnv::new();
+    let mut next=0u32;
+    let mut last_ty = Ty::int();
+    for stmt in &block.stmts {
+        match stmt {
+            Stmt::Let { name, value, .. } => {
+                let (ty,s) = infer(value,&mut env,&mut next)?;
+                let sc = generalise(&env.apply(&s), ty.clone());
+                env.extend(name.clone(), sc);
+            }
+            Stmt::Expr(e) | Stmt::Return(e) => {
+                let (ty,_) = infer(e,&mut env,&mut next)?;
+                last_ty = ty;
+            }
+        }
+    }
+    Ok(last_ty)
 }
 
 fn generalise(env: &TypeEnv, ty: Ty) -> Scheme {
