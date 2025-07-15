@@ -1,4 +1,4 @@
-use super::{env::TypeEnv, subst::Subst, ty::{Ty, Tv}};
+use super::{env::TypeEnv, subst::Subst, ty::{Ty, Tv}, scheme::{Scheme, ftv}};
 use crate::ast::{Expr, BinaryOp};
 use crate::error::XLError;
 
@@ -12,14 +12,40 @@ pub fn infer_expr(expr: &Expr) -> Result<Ty, XLError> {
     Ok(ty)
 }
 
-fn new_var(next:&mut u32) -> Ty { let tv = Tv(*next); *next+=1; Ty::Var(tv) }
+fn generalise(env: &TypeEnv, ty: Ty) -> Scheme {
+    use std::collections::HashSet;
+    let mut free_ty = HashSet::new();
+    ftv(&ty, &mut free_ty);
+    let mut free_env = HashSet::new();
+    for sc in env.map.values() {
+        ftv(&sc.ty, &mut free_env);
+    }
+    free_ty.retain(|tv| !free_env.contains(tv));
+    Scheme::new(free_ty.into_iter().collect(), ty)
+}
+
+fn instantiate(scheme: &Scheme, next:&mut u32) -> Ty {
+    let mut subst = Subst::empty();
+    for tv in &scheme.vars {
+        subst.insert(*tv, Ty::Var(Tv(*next))); *next +=1;
+    }
+    subst.apply(&scheme.ty)
+}
 
 fn infer(expr: &Expr, env: &mut TypeEnv, next: &mut u32) -> Result<(Ty, Subst), XLError> {
     use Expr::*;
     match expr {
         Int(_) => Ok((Ty::int(), Subst::empty())),
         Bool(_) => Ok((Ty::bool(), Subst::empty())),
-        Ident(name) => env.lookup(name).map(|t|(t,Subst::empty())).ok_or_else(|| XLError::SemanticError(format!("unbound identifier {}",name))),
+        Ident(name) => {
+            match env.lookup(name) {
+                Some(sc) => {
+                    let ty = instantiate(&sc, next);
+                    Ok((ty, Subst::empty()))
+                }
+                None => Err(XLError::SemanticError(format!("unbound identifier {}", name)))
+            }
+        }
         Binary { op, left, right } => {
             let (t1,s1)=infer(left, env, next)?;
             let (t2,s2)=infer(right, env, next)?;

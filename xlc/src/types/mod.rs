@@ -3,7 +3,9 @@ pub mod ty;
 pub mod subst;
 pub mod env;
 pub mod infer;
+pub mod scheme;
 
 pub use kind::Kind;
 pub use ty::{Ty, Tv};
 pub use infer::{infer_expr, TypeError};
+pub use scheme::Scheme;
