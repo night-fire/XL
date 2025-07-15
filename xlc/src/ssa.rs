@@ -1,6 +1,7 @@
 //! Minimal SSA intermediate representation.
 
 use std::collections::HashMap;
+pub mod passes;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ValueId(pub u32);
@@ -42,6 +43,7 @@ pub struct Function {
     pub name: String,
     pub blocks: HashMap<BlockId, BasicBlock>,
     pub entry: BlockId,
+    pub values: HashMap<ValueId, Value>,
     next_val: u32,
     next_bb: u32,
 }
@@ -53,6 +55,7 @@ impl Function {
             name,
             blocks: HashMap::new(),
             entry,
+            values: HashMap::new(),
             next_val: 0,
             next_bb: 1,
         }
@@ -61,7 +64,7 @@ impl Function {
     pub fn new_value(&mut self, kind: ValueKind) -> ValueId {
         let id = ValueId(self.next_val);
         self.next_val += 1;
-        // In real impl we'd store Value here – kept minimal.
+        self.values.insert(id, Value { id, kind });
         id
     }
 
@@ -94,6 +97,12 @@ impl PassManagerSSA {
                 changed |= p.run(func);
             }
         }
+    }
+    pub fn opt_level_1() -> Self {
+        let mut pm = PassManagerSSA::new();
+        pm.add(crate::ssa::passes::ConstPropPass);
+        pm.add(crate::ssa::passes::DcePass);
+        pm
     }
 }
 
