@@ -1,5 +1,5 @@
 use crate::ast::*;
-use crate::ast::RewriteRule;
+use crate::ast::{RewriteRule, AstDecl, AstField};
 use crate::error::XLError;
 use crate::lexer::Spanned;
 use crate::token::Token;
@@ -20,17 +20,24 @@ impl Parser {
     fn parse_program(&mut self) -> Result<Program, XLError> {
         let mut functions = Vec::new();
         let mut modules = Vec::new();
+        let mut ast_decls = Vec::new();
+        let mut imports = Vec::new();
         while !self.is_eof() {
-            if self.check(Token::ModuleKw) {
+            if self.check(Token::ImportKw) {
+                imports.push(self.parse_import()?);
+            } else if self.check(Token::AstKw) {
+                ast_decls.push(self.parse_ast_decl()?);
+            } else if self.check(Token::ModuleKw) {
                 modules.push(self.parse_module()?);
             } else {
                 functions.push(self.parse_function()?);
             }
         }
-        Ok(Program { functions, modules })
+        Ok(Program { functions, modules, ast_decls, imports })
     }
 
     fn parse_function(&mut self) -> Result<Function, XLError> {
+        let is_export = if self.match_keyword(Token::ExportKw) { true } else { false };
         self.expect_keyword(Token::Fn)?;
         let name = self.expect_ident()?;
         self.expect(Token::LParen)?;
@@ -51,7 +58,7 @@ impl Parser {
         self.expect(Token::Arrow)?;
         let return_type = self.parse_type()?;
         let body = self.parse_block()?;
-        Ok(Function { name, params, return_type, body })
+        Ok(Function { name, params, return_type, body, is_export })
     }
 
     fn parse_block(&mut self) -> Result<Block, XLError> {
@@ -234,8 +241,25 @@ impl Parser {
             }
             Some(Token::Ident(ref name)) => {
                 let id = name.clone();
-                self.advance();
-                Ok(Pattern::Ident(id))
+                // Check for Node pattern with '(' following
+                if self.tokens.get(self.pos + 1).map_or(false, |t| t.token == Token::LParen) {
+                    // consume ident and '(' 
+                    self.advance(); // ident
+                    self.expect(Token::LParen)?;
+                    let mut args = Vec::new();
+                    if !self.check(Token::RParen) {
+                        loop {
+                            args.push(self.parse_pattern()?);
+                            if self.check(Token::RParen) { break; }
+                            self.expect(Token::Comma)?;
+                        }
+                    }
+                    self.expect(Token::RParen)?;
+                    Ok(Pattern::Node { name: id, args })
+                } else {
+                    self.advance();
+                    Ok(Pattern::Ident(id))
+                }
             }
             other => Err(self.error(format!("unexpected token {:?} in pattern", other))),
         }
@@ -334,5 +358,32 @@ impl Parser {
 
     fn error(&self, msg: String) -> XLError {
         XLError::ParseError(msg)
+    }
+
+    fn parse_import(&mut self) -> Result<String, XLError> {
+        self.expect_keyword(Token::ImportKw)?;
+        let path = self.expect_ident()?;
+        self.expect(Token::Semicolon)?;
+        Ok(path)
+    }
+
+    fn parse_ast_decl(&mut self) -> Result<AstDecl, XLError> {
+        self.expect_keyword(Token::AstKw)?;
+        let name = self.expect_ident()?;
+        self.expect(Token::LParen)?;
+        let mut fields = Vec::new();
+        if !self.check(Token::RParen) {
+            loop {
+                let field_name = self.expect_ident()?;
+                self.expect(Token::Colon)?;
+                let field_type = self.expect_ident()?; // simple identifier type
+                fields.push(AstField { name: field_name, ty: field_type });
+                if self.check(Token::RParen) { break; }
+                self.expect(Token::Comma)?;
+            }
+        }
+        self.expect(Token::RParen)?;
+        self.expect(Token::Semicolon)?;
+        Ok(AstDecl { name, fields })
     }
 }

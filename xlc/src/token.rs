@@ -15,6 +15,9 @@ pub enum Token {
     #[token("module")] ModuleKw,
     #[token("if")] If,
     #[token("rewrite")] RewriteKw,
+    #[token("ast")] AstKw,
+    #[token("import")] ImportKw,
+    #[token("export")] ExportKw,
 
     // Symbols
     #[token("{")] LBrace,

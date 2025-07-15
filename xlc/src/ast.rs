@@ -5,6 +5,8 @@ use crate::token::Token;
 pub struct Program {
     pub functions: Vec<Function>, // top-level
     pub modules: Vec<Module>,
+    pub ast_decls: Vec<AstDecl>,
+    pub imports: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -19,6 +21,7 @@ pub struct Function {
     pub params: Vec<Param>,
     pub return_type: Type,
     pub body: Block,
+    pub is_export: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -49,6 +52,10 @@ pub enum Expr {
     Bool(bool),
     String(String),
     Ident(String),
+    Node {
+        name: String,
+        args: Vec<Pattern>,
+    },
     Match {
         value: Box<Expr>,
         arms: Vec<(Pattern, Expr)>,
@@ -134,6 +141,18 @@ pub struct RewriteRule {
     pub pattern: Pattern,
     pub guard: Option<Expr>, // evaluated with captures
     pub replacement: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct AstField {
+    pub name: String,
+    pub ty: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct AstDecl {
+    pub name: String,
+    pub fields: Vec<AstField>,
 }
 
 pub type SpannedToken = Spanned<Token>;

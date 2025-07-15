@@ -68,6 +68,20 @@ let x: Int = 42;
 
 `return <expr>;`
 
+## Объявление собственных узлов AST
+
+XL позволяет описывать структуру фронтенда прямо в языке через конструкцию `ast`:
+
+```xl
+ast Binary(op: Token, left: Expr, right: Expr);
+ast Let(name: Ident, value: Expr);
+```
+
+После такой декларации автоматически появляются:
+* Конструктор `Binary(...)`, `Let(...)`
+* Паттерн `Binary(op, left, right)` для `match` / `rewrite`
+* Функции обхода `visit_binary`, `walk_binary` (генерируются компилятором).
+
 ## Архитектура компилятора
 
 ```

@@ -96,6 +96,18 @@ pub fn match_pattern<'a>(pattern: &'a Pattern, expr: &'a Expr, bindings: &mut Bi
             let callee_ok = pc.as_ref().map_or(true, |name| name == ec);
             callee_ok && pargs.len() == eargs.len() && pargs.iter().zip(eargs).all(|(p, e)| match_pattern(p, e, bindings))
         }
+        (
+            Pattern::Node { name: pn, args: pargs },
+            expr @ _
+        ) => {
+            // naive: match Expr::Ident of node? For now we can't destruct Expr nodes generically. We'll compare Debug.
+            if let Expr::Call { callee, args: eargs } = expr {
+                let callee_match = pn == callee;
+                callee_match && pargs.len() == eargs.len() && pargs.iter().zip(eargs).all(|(p,e)| match_pattern(p,e,bindings))
+            } else {
+                false
+            }
+        }
         _ => false,
     }
 }
