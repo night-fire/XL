@@ -1,0 +1,15 @@
+ast Binary(op: String, left: Expr, right: Expr);
+
+fn simplify(e: Expr) -> Expr {
+    // rewrite rule: eliminate addition with zero
+    rewrite {
+        Binary("+", $x, 0) => $x;
+        Binary("+", 0, $x) => $x;
+    }(e)
+}
+
+fn main() -> Int {
+    let expr = Binary("+", 0, 42);
+    let simplified = simplify(expr);
+    return 0; // placeholder
+}
