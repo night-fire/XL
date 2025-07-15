@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 pub mod passes;
+pub mod lower;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ValueId(pub u32);
