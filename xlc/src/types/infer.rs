@@ -1,4 +1,4 @@
-use super::{env::TypeEnv, subst::Subst, ty::{Ty, Tv}, scheme::{Scheme, ftv}};
+use super::{env::TypeEnv, subst::Subst, ty::{Ty, Tv}, scheme::{Scheme, ftv}, unify::unify};
 use crate::ast::{Expr, BinaryOp};
 use crate::error::XLError;
 
@@ -51,8 +51,10 @@ fn infer(expr: &Expr, env: &mut TypeEnv, next: &mut u32) -> Result<(Ty, Subst), 
             let (t2,s2)=infer(right, env, next)?;
             // Require operands be Int for arithmetic
             if *op==BinaryOp::Add || *op==BinaryOp::Sub || *op==BinaryOp::Mul || *op==BinaryOp::Div {
-                if t1!=Ty::int() || t2!=Ty::int(){ return Err(XLError::SemanticError("type mismatch in binary".into())); }
-                Ok((Ty::int(), s1.compose(&s2)))
+                let mut s = s1.compose(&s2);
+                unify(&t1, &Ty::int(), &mut s)?;
+                unify(&t2, &Ty::int(), &mut s)?;
+                Ok((Ty::int(), s))
             } else { Err(XLError::SemanticError("unsupported op".into())) }
         }
         _ => Err(XLError::SemanticError("inference not implemented for expr".into())),

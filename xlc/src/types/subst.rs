@@ -11,6 +11,8 @@ impl Subst {
         match ty {
             Ty::Var(v) => self.0.get(v).cloned().unwrap_or(Ty::Var(*v)),
             Ty::App(h, args) => Ty::App(Box::new(self.apply(h)), args.iter().map(|a| self.apply(a)).collect()),
+            Ty::Struct(n, params) => Ty::Struct(n.clone(), params.iter().map(|a| self.apply(a)).collect()),
+            Ty::Enum(n, params) => Ty::Enum(n.clone(), params.iter().map(|a| self.apply(a)).collect()),
             Ty::ForAll(vars, t) => {
                 let mut inner = self.clone();
                 for v in vars { inner.0.remove(v); }

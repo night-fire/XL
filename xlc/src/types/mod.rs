@@ -4,6 +4,7 @@ pub mod subst;
 pub mod env;
 pub mod infer;
 pub mod scheme;
+pub mod unify;
 
 pub use kind::Kind;
 pub use ty::{Ty, Tv};
