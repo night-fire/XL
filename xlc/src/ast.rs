@@ -89,6 +89,9 @@ pub enum Type {
     Bool,
     String,
     Void,
+    Generic(String, Vec<Type>),
+    Struct(String, Vec<(String, Type)>),
+    Enum(String, Vec<(String, Option<Type>)>),
 }
 
 impl Type {

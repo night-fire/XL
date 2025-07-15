@@ -1,0 +1,41 @@
+(* XL reference grammar – EBNF, draft *)
+
+File        = { ImportDecl | AstDecl | ModuleDecl | FunctionDef } EOF ;
+ImportDecl  = "import" Path ";" ;
+ModuleDecl  = "module" Ident "{" { Item } "}" ;
+AstDecl     = "ast" Ident "(" FieldList ")" ";" ;
+FieldList   = Field { "," Field } ;
+Field       = Ident ":" TypeIdent ;
+FunctionDef = ExportOpt "fn" Ident "(" ParamList? ")" RetType Block ;
+ExportOpt   = "export" | /* empty */ ;
+ParamList   = Param { "," Param } ;
+Param       = Ident ":" Type ;
+RetType     = "->" Type ;
+Type        = TypeIdent | GenericType | FuncType | PtrType | TupleType ;
+GenericType = TypeIdent "<" Type { "," Type } ">" ;
+
+Block       = "{" { Stmt } "}" ;
+Stmt        = LetStmt | ReturnStmt | ExprStmt ;
+LetStmt     = "let" Ident (":" Type)? "=" Expr ";" ;
+ReturnStmt  = "return" Expr ";" ;
+ExprStmt    = Expr ";" ;
+
+Expr        = RewriteExpr | MatchExpr | BinaryExpr ;
+RewriteExpr = "rewrite" "{" Rule { Rule } "}" "(" Expr ")" ;
+Rule        = Pattern GuardOpt "=>" Expr ";" ;
+GuardOpt    = ("if" Expr) | /* empty */ ;
+Pattern     = "_" | Capture | NodePattern | Literal | Ident ;
+Capture     = "$" Ident ;
+NodePattern = Ident "(" PatternList? ")" ;
+PatternList = Pattern { "," Pattern } ;
+
+BinaryExpr  = Term { ("+" | "-" ) Term } ;
+Term        = Factor { ("*" | "/") Factor } ;
+Factor      = IntLit | StringLit | Ident | "(" Expr ")" ;
+
+(* lexer tokens *)
+IntLit      = DIGIT { DIGIT } ;
+StringLit   = '"' { ANY } '"' ;
+Ident       = ( ALPHA | '_' ) { ALNUM | '_' } ;
+TypeIdent   = Ident ;
+Path        = Ident { '.' Ident } ;

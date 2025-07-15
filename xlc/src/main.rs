@@ -16,6 +16,7 @@ mod visitor_mut;
 mod type_infer;
 mod symbol_table;
 mod ir_builder;
+mod ssa;
 
 use anyhow::Result;
 
