@@ -117,6 +117,9 @@ impl Parser {
                 self.advance();
                 Ok(Expr::Bool(false))
             }
+            Some(Token::RewriteKw) => {
+                return self.parse_rewrite_expr();
+            }
             Some(Token::Match) => {
                 return self.parse_match_expr();
             }
@@ -167,6 +170,25 @@ impl Parser {
             value: Box::new(value),
             arms,
         })
+    }
+
+    fn parse_rewrite_expr(&mut self) -> Result<Expr, XLError> {
+        self.expect_keyword(Token::RewriteKw)?;
+        self.expect(Token::LBrace)?;
+        let mut rules = Vec::new();
+        while !self.check(Token::RBrace) {
+            let pat = self.parse_pattern()?;
+            self.expect(Token::FatArrow)?;
+            let repl = self.parse_expr()?;
+            self.expect(Token::Semicolon)?;
+            rules.push((pat, repl));
+        }
+        self.expect(Token::RBrace)?;
+        // After `rewrite { rules }` expect target expression in parentheses
+        self.expect(Token::LParen)?;
+        let target = self.parse_expr()?;
+        self.expect(Token::RParen)?;
+        Ok(Expr::Rewrite { rules, target: Box::new(target) })
     }
 
     fn parse_pattern(&mut self) -> Result<Pattern, XLError> {

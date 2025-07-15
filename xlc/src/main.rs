@@ -12,6 +12,8 @@ mod ast_utils;
 mod parse_primitives;
 mod passes;
 mod visitor;
+mod symbol_table;
+mod ir_builder;
 
 use anyhow::Result;
 

@@ -92,5 +92,6 @@ fn infer_expr_type(expr: &Expr, ctx: &Context) -> Result<Type, XLError> {
             }
             Ok(first_ty)
         }
+        Expr::Rewrite { target, .. } => infer_expr_type(target, ctx),
     }
 }

@@ -12,6 +12,7 @@ pub enum Token {
     #[token("true")] True,
     #[token("false")] False,
     #[token("match")] Match,
+    #[token("rewrite")] RewriteKw,
 
     // Symbols
     #[token("{")] LBrace,

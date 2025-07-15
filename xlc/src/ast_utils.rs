@@ -105,3 +105,36 @@ pub fn match_pattern_simple(pattern: &Pattern, expr: &Expr) -> bool {
     let mut b = Bindings::new();
     match_pattern(pattern, expr, &mut b)
 }
+
+/// Apply first matching rewrite rule to expression tree (pre-order).
+pub fn apply_rewrite_rules(expr: Expr, rules: &[(Pattern, Expr)]) -> Expr {
+    // Try to apply rule to current node
+    for (pat, replacement) in rules {
+        let mut binds = Bindings::new();
+        if match_pattern(pat, &expr, &mut binds) {
+            // Simple replacement ignoring capture substitution for now
+            // TODO: substitute captures inside replacement using binds
+            return replacement.clone();
+        }
+    }
+    // Recurse otherwise
+    match expr {
+        Expr::Binary { op, left, right } => Expr::Binary {
+            op,
+            left: Box::new(apply_rewrite_rules(*left, rules)),
+            right: Box::new(apply_rewrite_rules(*right, rules)),
+        },
+        Expr::Call { callee, args } => Expr::Call {
+            callee,
+            args: args.into_iter().map(|e| apply_rewrite_rules(e, rules)).collect(),
+        },
+        Expr::Match { value, arms } => Expr::Match {
+            value: Box::new(apply_rewrite_rules(*value, rules)),
+            arms: arms
+                .into_iter()
+                .map(|(p, e)| (p, apply_rewrite_rules(e, rules)))
+                .collect(),
+        },
+        other => other,
+    }
+}

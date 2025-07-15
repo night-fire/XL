@@ -57,7 +57,13 @@ impl<'a> Parser<'a> {
 pub mod comb {
     use super::*;
 
-    pub type ParseResult<'a, T> = Result<(&'a str, T), &'a str>;
+    #[derive(Debug, Clone)]
+    pub struct ParseError<'a> {
+        pub input: &'a str,
+        pub message: &'static str,
+    }
+
+    pub type ParseResult<'a, T> = Result<(&'a str, T), ParseError<'a>>;
 
     pub trait Parser<'a, T> {
         fn parse(&self, input: &'a str) -> ParseResult<'a, T>;
@@ -157,7 +163,7 @@ pub mod comb {
                     return Ok((rest, first));
                 }
             }
-            Err(input)
+            Err(ParseError { input, message: "Expected character not found" })
         }
     }
 
@@ -172,7 +178,7 @@ pub mod comb {
                 }
             }
             if idx == 0 {
-                return Err(input);
+                return Err(ParseError { input, message: "No digits found" });
             }
             Ok((&input[idx..], &input[..idx]))
         }

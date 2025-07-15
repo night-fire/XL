@@ -47,6 +47,7 @@ fn codegen_expr<'ctx>(expr: &Expr, context: &'ctx Context, builder: &inkwell::bu
             }
         }
         Expr::Match { .. } => Err(XLError::CodegenError("match expression codegen not implemented".into())),
+        Expr::Rewrite { target, .. } => codegen_expr(target, context, builder),
         _ => Err(XLError::CodegenError("unsupported expression in codegen".into())),
     }
 }

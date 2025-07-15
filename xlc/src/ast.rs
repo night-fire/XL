@@ -46,6 +46,10 @@ pub enum Expr {
         value: Box<Expr>,
         arms: Vec<(Pattern, Expr)>,
     },
+    Rewrite {
+        rules: Vec<(Pattern, Expr)>,
+        target: Box<Expr>,
+    },
     Binary {
         op: BinaryOp,
         left: Box<Expr>,
