@@ -19,10 +19,15 @@ struct Parser {
 impl Parser {
     fn parse_program(&mut self) -> Result<Program, XLError> {
         let mut functions = Vec::new();
+        let mut modules = Vec::new();
         while !self.is_eof() {
-            functions.push(self.parse_function()?);
+            if self.check(Token::ModuleKw) {
+                modules.push(self.parse_module()?);
+            } else {
+                functions.push(self.parse_function()?);
+            }
         }
-        Ok(Program { functions })
+        Ok(Program { functions, modules })
     }
 
     fn parse_function(&mut self) -> Result<Function, XLError> {

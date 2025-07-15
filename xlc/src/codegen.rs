@@ -12,23 +12,31 @@ pub fn emit_llvm_ir(program: &Program, path: &Path) -> Result<(), XLError> {
 
     let i64_type = context.i64_type();
 
-    // For simplicity, only i64 return type functions for now
     for func in &program.functions {
-        let fn_type = i64_type.fn_type(&[], false);
-        let function = module.add_function(&func.name, fn_type, None);
-        let entry = context.append_basic_block(function, "entry");
-        builder.position_at_end(entry);
-
-        // Assuming single return expr
-        if let Some(Stmt::Return(expr)) = func.body.stmts.last() {
-            let value = codegen_expr(expr, &context, &builder)?;
-            builder.build_return(Some(&value));
-        } else {
-            builder.build_return(Some(&i64_type.const_int(0, false)));
+        generate_function(func, &context, &module, &builder, &i64_type)?;
+    }
+    for m in &program.modules {
+        for func in &m.functions {
+            generate_function(func, &context, &module, &builder, &i64_type)?;
         }
     }
-
+    
     module.print_to_file(path).map_err(|e| XLError::CodegenError(format!("{}", e)))?;
+    Ok(())
+}
+
+fn generate_function<'ctx>(func: &Function, context: &'ctx Context, module: &inkwell::module::Module<'ctx>, builder: &inkwell::builder::Builder<'ctx>, i64_type: &inkwell::types::IntType<'ctx>) -> Result<(), XLError> {
+    let fn_type = i64_type.fn_type(&[], false);
+    let function = module.add_function(&func.name, fn_type, None);
+    let entry = context.append_basic_block(function, "entry");
+    builder.position_at_end(entry);
+
+    if let Some(Stmt::Return(expr)) = func.body.stmts.last() {
+        let value = codegen_expr(expr, context, builder)?;
+        builder.build_return(Some(&value));
+    } else {
+        builder.build_return(Some(&i64_type.const_int(0, false)));
+    }
     Ok(())
 }
 

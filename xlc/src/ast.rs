@@ -3,6 +3,13 @@ use crate::token::Token;
 
 #[derive(Debug, Clone)]
 pub struct Program {
+    pub functions: Vec<Function>, // top-level
+    pub modules: Vec<Module>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Module {
+    pub name: String,
     pub functions: Vec<Function>,
 }
 

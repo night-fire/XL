@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 pub fn analyze(program: &Program) -> Result<(), XLError> {
     let mut ctx = Context::new();
-    // Register function signatures first
+    // Register top-level functions
     for func in &program.functions {
         if ctx.functions.contains_key(&func.name) {
             return Err(XLError::SemanticError(format!(
@@ -15,8 +15,24 @@ pub fn analyze(program: &Program) -> Result<(), XLError> {
         ctx.functions.insert(func.name.clone(), func.return_type.clone());
     }
 
+    // Register module functions
+    for m in &program.modules {
+        for func in &m.functions {
+            if ctx.functions.contains_key(&func.name) {
+                return Err(XLError::SemanticError(format!("duplicate function {}", func.name)));
+            }
+            ctx.functions.insert(func.name.clone(), func.return_type.clone());
+        }
+    }
+
     for func in &program.functions {
         analyze_function(func, &ctx)?;
+    }
+
+    for m in &program.modules {
+        for func in &m.functions {
+            analyze_function(func, &ctx)?;
+        }
     }
 
     Ok(())
