@@ -1,20 +1,34 @@
 use crate::ssa::{Function as SSAFunc, ValueKind, Terminator};
 use crate::ast::*;
+use std::collections::HashMap;
 
 pub fn lower_function(ast_fn: &Function) -> SSAFunc {
     let mut ssa = SSAFunc::new(ast_fn.name.clone());
     let entry_id = ssa.entry;
     let entry_block = ssa.blocks.entry(entry_id).or_insert_with(|| super::BasicBlock { id: entry_id, values: Vec::new(), terminator: Terminator::Ret(super::ValueId(0)) });
 
-    if let Some(Stmt::Return(expr)) = ast_fn.body.stmts.last() {
-        let val = lower_expr(expr, &mut ssa, entry_block);
-        entry_block.terminator = Terminator::Ret(val);
+    let mut env: HashMap<String, super::ValueId> = HashMap::new();
+
+    for stmt in &ast_fn.body.stmts {
+        match stmt {
+            Stmt::Let { name, value, .. } => {
+                let val_id = lower_expr(value, &mut ssa, entry_block, &env);
+                env.insert(name.clone(), val_id);
+            }
+            Stmt::Expr(e) => {
+                lower_expr(e, &mut ssa, entry_block, &env);
+            }
+            Stmt::Return(e) => {
+                let v = lower_expr(e, &mut ssa, entry_block, &env);
+                entry_block.terminator = Terminator::Ret(v);
+            }
+        }
     }
 
     ssa
 }
 
-fn lower_expr(expr: &Expr, ssa: &mut SSAFunc, bb: &mut super::BasicBlock) -> super::ValueId {
+fn lower_expr(expr: &Expr, ssa: &mut SSAFunc, bb: &mut super::BasicBlock, env: &HashMap<String, super::ValueId>) -> super::ValueId {
     use Expr::*;
     match expr {
         Int(v) => {
@@ -22,9 +36,10 @@ fn lower_expr(expr: &Expr, ssa: &mut SSAFunc, bb: &mut super::BasicBlock) -> sup
             bb.values.push(id);
             id
         }
+        Ident(name) => *env.get(name).unwrap_or(&ssa.new_value(ValueKind::Const(0))),
         Binary { op, left, right } => {
-            let l = lower_expr(left, ssa, bb);
-            let r = lower_expr(right, ssa, bb);
+            let l = lower_expr(left, ssa, bb, env);
+            let r = lower_expr(right, ssa, bb, env);
             let kind = match op {
                 BinaryOp::Add => ValueKind::Add(l,r),
                 BinaryOp::Sub => ValueKind::Sub(l,r),
@@ -36,7 +51,6 @@ fn lower_expr(expr: &Expr, ssa: &mut SSAFunc, bb: &mut super::BasicBlock) -> sup
             id
         }
         _ => {
-            // unsupported -> const 0
             let id = ssa.new_value(ValueKind::Const(0));
             bb.values.push(id);
             id
