@@ -86,11 +86,28 @@ impl Type {
 
 #[derive(Debug, Clone)]
 pub enum Pattern {
+    /// `_` matches anything
     Wildcard,
+    /// `$name` — захват произвольного выражения в переменную
+    Capture(String),
     Int(i64),
     Bool(bool),
     String(String),
+    /// Точное совпадение идентификатора (например, `x`)
     Ident(String),
+
+    /// Двоичное выражение с необязательным указанием оператора (None = любой)
+    Binary {
+        op: Option<BinaryOp>,
+        left: Box<Pattern>,
+        right: Box<Pattern>,
+    },
+
+    /// Вызов функции. `callee = None` соответствует любому идентификатору
+    Call {
+        callee: Option<String>,
+        args: Vec<Pattern>,
+    },
 }
 
 pub type SpannedToken = Spanned<Token>;

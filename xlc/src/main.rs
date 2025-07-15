@@ -10,6 +10,8 @@ mod codegen;
 mod error;
 mod ast_utils;
 mod parse_primitives;
+mod passes;
+mod visitor;
 
 use anyhow::Result;
 

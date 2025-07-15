@@ -193,6 +193,11 @@ impl Parser {
                 self.advance();
                 Ok(Pattern::Wildcard)
             }
+            Some(Token::Dollar) => {
+                self.advance();
+                let name = self.expect_ident()?;
+                Ok(Pattern::Capture(name))
+            }
             Some(Token::Ident(ref name)) => {
                 let id = name.clone();
                 self.advance();

@@ -28,6 +28,8 @@ pub enum Token {
     #[token("*")] Star,
     #[token("/")] Slash,
 
+    #[token("$")] Dollar,
+
     #[token("=>")] FatArrow,
 
     // Pattern / wildcard
