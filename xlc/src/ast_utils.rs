@@ -200,3 +200,15 @@ where
     }
     acc
 }
+
+/// Apply rewrite rules repeatedly until expression stabilises or `max_iters` reached.
+pub fn apply_rewrite_fixpoint(mut expr: Expr, rules: &[crate::ast::RewriteRule], max_iters: usize) -> Expr {
+    for _ in 0..max_iters {
+        let new_expr = apply_rewrite_rules(expr.clone(), rules);
+        if new_expr == expr {
+            break;
+        }
+        expr = new_expr;
+    }
+    expr
+}
