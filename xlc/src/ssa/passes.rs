@@ -1,6 +1,8 @@
 use super::*;
 use std::collections::{HashMap, HashSet};
 
+pub mod mem2reg;
+
 fn const_int(func:&Function, id: ValueId) -> Option<i64> {
     match func.values.get(&id)?.kind {
         ValueKind::Const(c) => Some(c),

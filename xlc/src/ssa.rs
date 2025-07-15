@@ -101,6 +101,7 @@ impl PassManagerSSA {
     }
     pub fn opt_level_1() -> Self {
         let mut pm = PassManagerSSA::new();
+        pm.add(crate::ssa::passes::mem2reg::Mem2Reg);
         pm.add(crate::ssa::passes::ConstPropPass);
         pm.add(crate::ssa::passes::DcePass);
         pm
