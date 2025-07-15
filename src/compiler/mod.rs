@@ -1,6 +1,11 @@
 pub mod lexer;
 pub mod parser;
 pub mod ast;
+pub mod types;
+pub mod visitor;
+pub mod typecheck;
+pub mod ir;
+pub mod lowering;
 pub mod codegen;
 
 use std::path::Path;
@@ -23,8 +28,14 @@ pub fn compile(input: &Path, output: &Path) -> Result<()> {
     let tokens = lexer::lex(&source)?;
     let ast = parser::parse(tokens)?;
 
-    // Codegen to Rust
-    let rust_source = codegen::generate_rust(&ast);
+    // Type checking
+    typecheck::check_program(&ast)?;
+
+    // Lower to IR
+    let ir_mod = lowering::lower(&ast)?;
+
+    // Codegen to Rust from IR
+    let rust_source = codegen::generate_rust(&ir_mod);
 
     // Write temp Rust file
     let mut tmp = NamedTempFile::new().context("Failed to create temp file")?;

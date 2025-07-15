@@ -2,6 +2,7 @@ use anyhow::{bail, Result};
 
 use super::ast::*;
 use super::lexer::{Token, TokenKind};
+use super::types::Type;
 
 pub fn parse(tokens: Vec<Token>) -> Result<Program> {
     let mut p = Parser { tokens, pos: 0 };
@@ -86,7 +87,7 @@ impl Parser {
 
     fn parse_stmt(&mut self) -> Result<Stmt> {
         match self.peek_kind() {
-            Some(TokenKind::Return) => {
+            Some(&TokenKind::Return) => {
                 self.bump();
                 let expr = self.parse_expr()?;
                 self.expect_keyword(TokenKind::Semi)?;
@@ -157,6 +158,8 @@ impl Parser {
                         Ok(Expr::Ident(ident_name))
                     }
                 }
+                TokenKind::True => Ok(Expr::Bool(true)),
+                TokenKind::False => Ok(Expr::Bool(false)),
                 _ => bail!("Unexpected token in expression"),
             },
             None => bail!("Unexpected EOF in expression"),

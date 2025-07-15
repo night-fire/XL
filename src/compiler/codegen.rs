@@ -1,82 +1,105 @@
-use crate::compiler::ast::*;
+use crate::compiler::ir::{Instruction, Module};
+use crate::compiler::types::Type;
 
-pub fn generate_rust(program: &Program) -> String {
+pub fn generate_rust(module: &Module) -> String {
     let mut out = String::new();
-    out.push_str("// Auto-generated Rust code from XL compiler\n");
-    for item in program {
-        match item {
-            Item::Function(fun) => gen_function(fun, &mut out),
-        }
+    out.push_str("// Auto-generated Rust code from XL compiler (via IR)\n");
+    for fun in &module.functions {
+        gen_function(fun, &mut out);
     }
-    // Ensure main exists; else create empty
-    if !program.iter().any(|i| matches!(i, Item::Function(f) if f.name == "main")) {
+    // Ensure main exists
+    if !module.functions.iter().any(|f| f.name == "main") {
         out.push_str("fn main() {}\n");
     }
     out
 }
 
-fn gen_function(fun: &Function, out: &mut String) {
+fn gen_function(fun: &crate::compiler::ir::Function, out: &mut String) {
     out.push_str("fn ");
     out.push_str(&fun.name);
     out.push('(');
-    for (i, p) in fun.params.iter().enumerate() {
+    for (i, ty) in fun.params.iter().enumerate() {
         if i > 0 { out.push(','); }
-        out.push_str(&p.name);
-        out.push_str(": i32");
+        out.push_str(&format!("arg{}: {}", i, ty));
     }
     out.push(')');
-    match fun.ret_type {
-        Type::I32 => out.push_str(" -> i32"),
-        Type::Void => {},
+    // Assume return type i32 or void for now
+    // TODO store ret type in IR
+    out.push_str(" -> i32 {");
+    out.push('\n');
+
+    // Map value ids to local names
+    let mut value_names = Vec::new();
+
+    for block in &fun.blocks {
+        for instr in &block.instrs {
+            match instr {
+                Instruction::ConstInt { dest, value } => {
+                    let name = format!("tmp{}", dest);
+                    ensure_size(&mut value_names, *dest);
+                    value_names[*dest] = name.clone();
+                    out.push_str(&format!("    let {} = {}i32;\n", name, value));
+                }
+                Instruction::Add { dest, lhs, rhs } => {
+                    let name = format!("tmp{}", dest);
+                    ensure_size(&mut value_names, *dest);
+                    value_names[*dest] = name.clone();
+                    out.push_str(&format!(
+                        "    let {} = {} + {};\n",
+                        name,
+                        value_names[*lhs].clone(),
+                        value_names[*rhs].clone()
+                    ));
+                }
+                Instruction::Sub { dest, lhs, rhs } => {
+                    let name = format!("tmp{}", dest);
+                    ensure_size(&mut value_names, *dest);
+                    value_names[*dest] = name.clone();
+                    out.push_str(&format!(
+                        "    let {} = {} - {};\n",
+                        name,
+                        value_names[*lhs].clone(),
+                        value_names[*rhs].clone()
+                    ));
+                }
+                Instruction::Mul { dest, lhs, rhs } => {
+                    let name = format!("tmp{}", dest);
+                    ensure_size(&mut value_names, *dest);
+                    value_names[*dest] = name.clone();
+                    out.push_str(&format!(
+                        "    let {} = {} * {};\n",
+                        name,
+                        value_names[*lhs].clone(),
+                        value_names[*rhs].clone()
+                    ));
+                }
+                Instruction::Div { dest, lhs, rhs } => {
+                    let name = format!("tmp{}", dest);
+                    ensure_size(&mut value_names, *dest);
+                    value_names[*dest] = name.clone();
+                    out.push_str(&format!(
+                        "    let {} = {} / {};\n",
+                        name,
+                        value_names[*lhs].clone(),
+                        value_names[*rhs].clone()
+                    ));
+                }
+                Instruction::Return { value } => {
+                    if let Some(v) = value {
+                        out.push_str(&format!("    return {};\n", value_names[*v]));
+                    } else {
+                        out.push_str("    return;\n");
+                    }
+                }
+            }
+        }
     }
-    out.push_str(" {\n");
-    for stmt in &fun.body {
-        gen_stmt(stmt, out);
-    }
+
     out.push_str("}\n\n");
 }
 
-fn gen_stmt(stmt: &Stmt, out: &mut String) {
-    match stmt {
-        Stmt::Return(expr) => {
-            out.push_str("    return ");
-            gen_expr(expr, out);
-            out.push_str(";\n");
-        }
-        Stmt::Let { name, value } => {
-            out.push_str("    let ");
-            out.push_str(name);
-            out.push_str(" = ");
-            gen_expr(value, out);
-            out.push_str(";\n");
-        }
-    }
-}
-
-fn gen_expr(expr: &Expr, out: &mut String) {
-    match expr {
-        Expr::Ident(name) => out.push_str(name),
-        Expr::Int(v) => out.push_str(&v.to_string()),
-        Expr::Binary { left, op, right } => {
-            gen_expr(left, out);
-            out.push(' ');
-            out.push_str(match op {
-                BinOp::Add => "+",
-                BinOp::Sub => "-",
-                BinOp::Mul => "*",
-                BinOp::Div => "/",
-            });
-            out.push(' ');
-            gen_expr(right, out);
-        }
-        Expr::Call { func, args } => {
-            out.push_str(func);
-            out.push('(');
-            for (i, arg) in args.iter().enumerate() {
-                if i > 0 { out.push(','); }
-                gen_expr(arg, out);
-            }
-            out.push(')');
-        }
+fn ensure_size(vec: &mut Vec<String>, idx: usize) {
+    if vec.len() <= idx {
+        vec.resize(idx + 1, String::new());
     }
 }

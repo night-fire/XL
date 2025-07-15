@@ -7,6 +7,10 @@ pub enum TokenKind {
     Function,
     #[token("return")]
     Return,
+    #[token("true")]
+    True,
+    #[token("false")]
+    False,
     #[regex("[a-zA-Z_][a-zA-Z0-9_]*")]
     Ident,
     #[regex("[0-9]+", |lex| lex.slice().parse())]

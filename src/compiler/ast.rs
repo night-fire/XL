@@ -1,3 +1,7 @@
+use super::types::Type;
+
+pub type NodeId = usize;
+
 #[derive(Debug, Clone)]
 pub enum Item {
     Function(Function),
@@ -27,6 +31,7 @@ pub enum Stmt {
 pub enum Expr {
     Ident(String),
     Int(i64),
+    Bool(bool),
     Binary { left: Box<Expr>, op: BinOp, right: Box<Expr> },
     Call { func: String, args: Vec<Expr> },
 }
@@ -37,12 +42,12 @@ pub enum BinOp {
     Sub,
     Mul,
     Div,
-}
-
-#[derive(Debug, Clone)]
-pub enum Type {
-    I32,
-    Void,
+    And,
+    Or,
+    Eq,
+    Ne,
+    Lt,
+    Gt,
 }
 
 pub type Program = Vec<Item>;
